@@ -1,0 +1,19 @@
+hail-batch:
+    billing-project: 
+    regions:
+        - us-central1
+    remote-tmpdir: gs://
+
+cellpose:
+    # copy run_cellpose.py to a bucket and provide the gs:// URI
+    script: gs://......../run_cellpose.py
+    # docker image, see readme
+    docker-image: us-central1-docker.pkg.dev/PROJECT/REPOSITORY/pillow-jxl-cuda:latest
+    machine-type: g2-standard-4
+    num-processes: 4
+    # although not mandatory, if you run cellpose, it is recommended to copy the following files
+    # to a private bucket and provide the gs:// URI to this configuration file
+    # https://www.cellpose.org/models/nucleitorch_0
+    # https://www.cellpose.org/models/size_nucleitorch_0.npy
+    model: null
+    model-size: null
