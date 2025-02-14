@@ -31,12 +31,17 @@ def dino_model():
         assert False, "teacher not in state dict"
         # teacher only for embeddings
 
+    assert len(msg.missing_keys) == 0, print(msg)
+
     for p in model.parameters():
         p.requires_grad = False
     model = model.eval()
 
-    tmp = torch.tensor(np.random.uniform(0, 1, (56, 5, 128, 128)).astype(np.float32))
+    tmp = torch.tensor(np.random.uniform(0, 1, (56, 5, 128, 128)).astype(np.float32)).to(device)
     assert model(tmp).shape == (56, embed_dim)
 
     return lambda x: model(torch.tensor(x).to(device)).numpy()
 
+
+if __name__ == '__main__':
+    dino_model()
