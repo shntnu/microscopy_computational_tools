@@ -1,0 +1,15 @@
+hail-batch:
+    billing-project: 
+    regions:
+        - us-central1
+    remote-tmpdir: gs://
+
+dino4cells:
+    # Create a tgz of the dino4cells folder and provide the gs:// URI
+    code: gs://.../dino4cells.tgz
+    # docker image, same as for cellpose
+    docker-image: us-central1-docker.pkg.dev/PROJECT/REPOSITORY/pillow-jxl-cuda:latest
+    machine-type: g2-standard-4
+    num-workers: 4
+    # model weights, https://zenodo.org/records/8061392
+    model: gs://.../DINO_cell_painting_base_checkpoint.pth
