@@ -1,3 +1,5 @@
+# https://github.com/broadinstitute/Dino4Cells_analysis/blob/main/archs/xresnet.py
+
 import torch.nn as nn
 import torch,math,sys
 import torch.utils.model_zoo as model_zoo

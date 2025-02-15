@@ -2,9 +2,7 @@ import torch
 import archs.vision_transformer as vits
 import numpy as np
 
-pretrained_weights = "/Users/thouis/Desktop/Cell_Painting_data/DINO_cell_painting_base_checkpoint.pth"
-
-def dino_model():
+def dino_model(pretrained_weights_path):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = vits.vit_base(
                     img_size=[128],
@@ -14,12 +12,10 @@ def dino_model():
                 )
     embed_dim = model.embed_dim
 
-    for p in model.parameters():
-        p.requires_grad = False
     model.eval()
     model.to(device)
 
-    state_dict = torch.load(pretrained_weights, map_location="cpu")
+    state_dict = torch.load(pretrained_weights_path, map_location="cpu", weights_only=False)
     if "teacher" in state_dict:
         teacher = state_dict["teacher"]
         teacher = {k.replace("module.", ""): v for k, v in teacher.items()}
@@ -33,15 +29,14 @@ def dino_model():
 
     assert len(msg.missing_keys) == 0, print(msg)
 
-    for p in model.parameters():
-        p.requires_grad = False
     model = model.eval()
 
     tmp = torch.tensor(np.random.uniform(0, 1, (56, 5, 128, 128)).astype(np.float32)).to(device)
-    assert model(tmp).shape == (56, embed_dim)
+    with torch.inference_mode():
+        assert model(tmp).shape == (56, embed_dim)
 
-    return lambda x: model(torch.tensor(x).to(device)).numpy()
-
-
-if __name__ == '__main__':
-    dino_model()
+    def eval(x):
+        with torch.inference_mode():
+            return model(x.to(device)).numpy()
+        
+    return lambda x: eval(x)

@@ -1,3 +1,4 @@
+# modified from https://github.com/facebookresearch/dino/blob/main/utils.py
 import torch
 import math
 

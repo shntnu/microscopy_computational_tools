@@ -1,3 +1,6 @@
+# https://github.com/broadinstitute/Dino4Cells_analysis/blob/main/archs/cnns.py
+# modified from https://github.com/pytorch/vision/blob/7d955df73fe0e9b47f7d6c77c699324b256fc41f/torchvision/models/resnet.py
+
 import torch
 from torch import Tensor
 import torch.nn as nn
