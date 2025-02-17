@@ -35,8 +35,9 @@ def dino_model(pretrained_weights_path):
     with torch.inference_mode():
         assert model(tmp).shape == (56, embed_dim)
 
-    def eval(x):
+    def eval_network(x):
         with torch.inference_mode():
+            x = torch.as_tensor(x)
             return model(x.to(device)).cpu().numpy()
 
-    return lambda x: eval(x)
+    return eval_network

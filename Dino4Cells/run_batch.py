@@ -40,7 +40,7 @@ for plate in args.plates:
     image_folder = f'{input_folder}/{plate}/'
 
     j.command(f'tar -zxf {dino4cells_code}')
-    j.command(f'python3 run_dino4cells.py {dino4cells_model} /images/{quote(image_folder)} {[quote(f) for f in args.channel_filters]} {quote(centers_file)} {num_workers}')
+    j.command(f'python3 run_dino4cells.py {dino4cells_model} /images/{quote(image_folder)} {" ".join([quote(f) for f in args.channel_filters])} {quote(centers_file)} {num_workers}')
     j.command(f'mv dino4cells.tsv {j.ofile}')
     b.write_output(j.ofile, f'{args.output_folder}/dino4cells_{plate}.tsv')
 b.run() 

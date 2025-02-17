@@ -1,5 +1,5 @@
 import sys
-import glob
+import os.path
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -92,19 +92,44 @@ def extract_subimages(images, centers_x, centers_y, subwindow=128):
     return output
 
 
+def collect_imnames(images_folder, DNA_image_filenames, channel_filters):
+    dna_images = [images_golder + imname for imname in DNA_image_filenames]
+    other_images = [[dnaim.replace(channel_filters[0], newchan) for dnaim in dna_images]
+                    for newchan in channel_filters[1:]]
+    return list(zip(dna_images, *other_images))
+
+
 def cell_embeddings(images_folder, centers, channel_filters, num_workers):
     output = []
     model = dino_model(args.model_path)
 
-    ds = Data_Set(images_folder, channel_filters, centers)
-    bs = Batch_Sampler(centers)
-    dataloader = DataLoader(ds, batch_sampler=bs, num_workers=num_workers, pin_memory=True)
-    for filename, centers_x, centers_y, subimages in dataloader:
-        centers_x = centers_x.tolist()
-        centers_y = centers_y.tolist()
+    # generate image names
+    dna_images = [images_folder + imname for imname in centers.index]
+    other_images = [[dnaim.replace(channel_filters[0], newchan) for dnaim in dna_images]
+                    for newchan in channel_filters[1:]]
+    image_groups = list(zip(dna_images, *other_images))
+
+    ## This appears to be very slow?  
+    ## # check that image paths point to actual files
+    ## image_groups = [imgrp for imgrp in image_groups if all(os.path.exists(filepath) for filepath in imgrp)]
+    ## if len(image_groups) != len(centers):
+    ##     print(f"WARNING: Found complete image sets for {len(image_groups)} out of {len(centers)}")
+
+    # generate embeddings
+    for imgrp in image_groups:
+        dna_imname = imgrp[0].split('/')[-1]
+        try:
+            ims = [np.asarray(Image.open(filename)) for filename in imgrp]
+        except:
+            print("Could not read one or more of:", " ".join(imgrp))
+            continue
+        centers_x = centers.loc[dna_imname].x
+        centers_y = centers.loc[dna_imname].y
+        subimages = extract_subimages(ims, centers_x, centers_y)
+        print(dna_imname, len(centers_x))
         embeddings = model(subimages)
         for x, y, em in zip(centers_x, centers_y, embeddings):
-            output.append([filename[0], x, y, em])
+            output.append([dna_imname, x, y, em])
     return output
 
 
