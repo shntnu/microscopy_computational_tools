@@ -37,6 +37,6 @@ def dino_model(pretrained_weights_path):
 
     def eval(x):
         with torch.inference_mode():
-            return model(x.to(device)).numpy()
-        
+            return model(x.to(device)).cpu().numpy()
+
     return lambda x: eval(x)
