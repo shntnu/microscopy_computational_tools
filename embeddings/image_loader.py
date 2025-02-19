@@ -1,0 +1,85 @@
+import os
+import numpy as np
+from PIL import Image
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import Sampler
+
+SCALE = 2**16 - 1
+
+def rescale(arr, axes=[-1, -2]):
+    arr = arr.copy()
+    arr = arr.astype(np.float32)
+    arr -= np.min(arr)
+    arr = (arr * SCALE / (np.max(arr) + 1e-8))
+    return arr
+
+
+class Data_Set(Dataset):
+    def __init__(self, image_groups, centers, subwindow=128):
+        self.image_groups = image_groups
+        self.centers = centers
+        self.cells_per_image = centers.x.str.len().to_dict()
+        self.subwindow = subwindow
+        self.file_loaded = None
+        self.images = None
+        self.cell_idx_to_image_idx = []
+        self.cell_idx_to_offset = []
+        for image_idx, imgrp in enumerate(image_groups):
+            key = os.path.basename(imgrp[0])
+            if key not in self.cells_per_image:
+                # an image without any detected cells
+                continue
+            for offset in range(self.cells_per_image[key]):
+                self.cell_idx_to_image_idx.append(image_idx)
+                self.cell_idx_to_offset.append(offset)
+    def __len__(self): 
+        num_cells = len(self.idx_to_image)
+        return num_cells
+    def extract_subimage(self, images, center_x, center_y, subwindow=128):
+        output = np.zeros((len(self.images), subwindow, subwindow), dtype=np.float32)  # Batch, channels, width, height
+        for ichan, im in enumerate(self.images):
+            output[ichan, ...] = im[center_x:center_x + subwindow, center_y:center_y + subwindow]
+        # rescale each subimage
+        output -= output.min(axis=(1, 2), keepdims=True)
+        out_max = output.max(axis=(1, 2), keepdims=True)
+        out_max[out_max == 0] = 1
+        output /= out_max
+        return output
+    def __getitem__(self, idx):
+        image_idx = self.cell_idx_to_image_idx[idx]
+        if self.file_loaded != image_idx:
+            self.file_loaded = image_idx
+            self.images = []
+            for filename in self.image_groups[image_idx]:
+                try:
+                    self.images.append( np.asarray(Image.open(filename)) )
+                except:
+                    print(f'WARNING: Loading file failed for {filename}')
+                    x_max = self.centers['x'].iloc[image_idx].max()
+                    y_max = self.centers['y'].iloc[image_idx].max()
+                    self.images.append( np.zeros((x_max, y_max), dtype=np.uint16) )
+            # pad images to simplify subimage extraction
+            padwidth = self.subwindow // 2
+            # this makes x, y the upper left corner of each subwindow, and prevents out-of-bounds
+            self.images = [np.pad(im, (padwidth, self.subwindow - padwidth)) for im in self.images]
+        center_x = self.centers['x'].iloc[image_idx][ self.cell_idx_to_offset[idx] ]
+        center_y = self.centers['y'].iloc[image_idx][ self.cell_idx_to_offset[idx] ]
+        cell = self.extract_subimage(self.images, center_x, center_y, subwindow=128)
+        return self.centers.index[image_idx], center_x, center_y, cell
+
+
+class Batch_Sampler(Sampler):
+    def __init__(self, image_groups, centers):
+        self.image_groups = image_groups
+        self.cells_per_image = centers.x.str.len().to_dict()
+    def __iter__(self):
+        offset = 0
+        for imgrp in self.image_groups:
+            key = os.path.basename(imgrp[0])
+            if key not in self.cells_per_image:
+                # an image without any detected cells
+                continue
+            batch_size = self.cells_per_image[key]
+            yield [offset+i for i in range(batch_size)]
+            offset += batch_size
