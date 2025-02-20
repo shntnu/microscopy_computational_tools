@@ -12,7 +12,7 @@ backend = hb.ServiceBackend(billing_project=config['hail-batch']['billing-projec
 bucket_name     = '' # without gs://
 input_folder    = '' # path within the bucket, without trailing slash
 plates          = ['BR00135656__2022-08-31T19_43_09-Measurement1'] # names of folders in input_folder
-DNA_channel     = '-ch2' # the script will look for files named gs://{bucket_name}/{input_folder}/{plate}/*{DNA_channel}*
+DNA_channel     = '-ch5' # the script will look for files named gs://{bucket_name}/{input_folder}/{plate}/*{DNA_channel}*
 output_folder   = 'gs://....' # the script will create a file cellpose_{plate}.tsv in this folder, without trailing slash
 
 b = hb.Batch(backend=backend, name='cellpose')
@@ -21,7 +21,7 @@ for plate in plates:
     j.cloudfuse(bucket_name, '/images')
     j._machine_type = config['cellpose']['machine-type']
     j.image(config['cellpose']['docker-image'])
-    j.storage('20Gi') # should be large enough for Docker image and for tsv output (not for images)
+    j.storage('25Gi') # should be large enough for Docker image and for tsv output (not for images)
 
     if config['cellpose']['model'] is not None:
         cellpose_model = b.read_input(config['cellpose']['model'])
@@ -32,11 +32,10 @@ for plate in plates:
 
     num_processes = config['cellpose']['num-processes']
     process_string = str(num_processes) + ' -- ' + ' '.join(map(str, range(num_processes)))
-    cellpose_script = b.read_input(config['cellpose']['script'])
     image_folder = f'{input_folder}/{plate}/'
 
-    j.command(f'parallel -j {num_processes} python3 {quote(cellpose_script)} /images/{quote(image_folder)} {quote(DNA_channel)} {process_string}')
-    j.command(f'echo -e "file\\tx\\ty" > {j.ofile}')
+    j.command(f'parallel -j {num_processes} python3 /scripts/cellpose/run_cellpose.py /images/{quote(image_folder)} {quote(DNA_channel)} {process_string}')
+    j.command(f'echo -e "file\\ti\\tj" > {j.ofile}')
     j.command(f'cat cellpose_* >> {j.ofile}')
     b.write_output(j.ofile, f'{output_folder}/cellpose_{plate}.tsv')
 b.run() 

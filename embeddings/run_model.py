@@ -3,13 +3,14 @@ import glob
 import os.path
 import numpy as np
 import pandas as pd
+from subimage_inspector import Subimage_inspector
 
 from ast import literal_eval
 import argparse
 from torch.utils.data import DataLoader
 from image_loader import Data_Set, Batch_Sampler
 
-def cell_embeddings(model, model_path, images_folder, centers, channel_names, channel_substrings, num_workers):
+def cell_embeddings(model, model_path, images_folder, centers, inspection_file, channel_names, channel_substrings, num_workers):
     output = []
     if model == 'dino4cells':
         from dino4cells.simple_embed import dino_model
@@ -44,15 +45,27 @@ def cell_embeddings(model, model_path, images_folder, centers, channel_names, ch
     bs = Batch_Sampler(image_groups, centers)
     dataloader = DataLoader(ds, batch_sampler=bs, num_workers=num_workers, pin_memory=True)
 
+    if inspection_file is not None:
+        num_sample_crops = 100
+        num_channels = len(input_channels)
+        num_cells = len(ds)
+        resolution = 128
+        subimage_inspector = Subimage_inspector(num_cells, num_sample_crops, num_channels, resolution)
+
     # generate embeddings
-    for dna_imnames, centers_x, centers_y, subimages in dataloader:
+    for dna_imnames, centers_i, centers_j, subimages in dataloader:
         dna_imname = dna_imnames[0]
-        centers_x = centers_x.tolist()
-        centers_y = centers_y.tolist()
-        print(dna_imname, len(centers_x))
+        centers_i = centers_i.tolist()
+        centers_j = centers_j.tolist()
+        print(dna_imname, len(centers_i))
+        if inspection_file is not None:
+            subimage_inspector.add(dna_imname, centers_i, centers_j, subimages)
         embeddings = model(subimages)
-        for x, y, em in zip(centers_x, centers_y, embeddings):
-            output.append([dna_imname, x, y, em])
+        for i, j, em in zip(centers_i, centers_j, embeddings):
+            output.append([dna_imname, i, j, em])
+    
+    if inspection_file is not None:
+        subimage_inspector.save(inspection_file)
     return output
 
 
@@ -65,6 +78,7 @@ parser.add_argument('channel_substrings', type=str, help='comma seperated substr
 parser.add_argument('centers_path', type=str, help='filename with cell centers')
 parser.add_argument('num_workers', type=int, help='number of processes for loading data')
 parser.add_argument('output_file', type=str, help='output filename', nargs='?', default='dino4cells.tsv')
+parser.add_argument('inspection_file', type=str, help='output filename with image crops for manual inspection', nargs='?')
 args = parser.parse_args()
 
 images_folder = args.plate_path
@@ -78,9 +92,9 @@ if args.channel_names.count(',') != args.channel_substrings.count(','):
 channel_names      = [s.strip() for s in args.channel_names.split(',')]
 channel_substrings = [s.strip() for s in args.channel_substrings.split(',')]
 
-centers = pd.read_table(args.centers_path, converters={'x':literal_eval, 'y':literal_eval}, index_col='file')
+centers = pd.read_table(args.centers_path, converters={'i':literal_eval, 'j':literal_eval}, index_col='file')
 
-output = cell_embeddings(args.model, args.model_path, images_folder, centers, channel_names, channel_substrings, args.num_workers)
+output = cell_embeddings(args.model, args.model_path, images_folder, centers, args.inspection_file, channel_names, channel_substrings, args.num_workers)
 
-df = pd.DataFrame(output, columns="file x y embedding".split())
+df = pd.DataFrame(output, columns="file i j embedding".split())
 df.to_csv(args.output_file, sep="\t", index=None)

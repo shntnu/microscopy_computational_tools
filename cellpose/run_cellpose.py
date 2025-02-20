@@ -45,7 +45,7 @@ def cell_outlines(images_folder, files):
             scale_x = im.size[0] / 512
             scale_y = im.size[1] / 512
             for center in centers:
-                output.append( {'file': file, 'x': round(scale_x * center[1]), 'y': round(scale_y * center[0])} )
+                output.append( {'file': file, 'i': round(scale_x * center[0]), 'j': round(scale_y * center[1])} )
         except KeyboardInterrupt:
             sys.exit(0)
         except:
@@ -66,7 +66,7 @@ channel_filter  = args.dna_channel_substring
 num_processes   = args.num_processes
 process_idx     = args.process_idx
 output_file     = f'cellpose_{process_idx}_{num_processes}.csv'
-add_header      = num_processes > 0
+add_header      = num_processes > 1
 
 files = glob.glob(f'{plate_path}*{channel_filter}*')
 files = [f.removeprefix(plate_path) for f in files]
@@ -76,4 +76,4 @@ output = cell_outlines(plate_path, files)
 
 df = pd.DataFrame(output)
 df = df.groupby('file').agg(list).reset_index()
-df[['file', 'x', 'y']].to_csv(output_file, sep='\t', header=add_header, index=False)
+df[['file', 'i', 'j']].to_csv(output_file, sep='\t', header=add_header, index=False)
