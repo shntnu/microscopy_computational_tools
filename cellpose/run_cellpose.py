@@ -1,10 +1,10 @@
 import sys
 import glob
+import argparse
 import numpy as np
 import pandas as pd
 from PIL import Image
 from cellpose import models
-from cellpose.utils import masks_to_outlines
 from cellpose.dynamics import get_centers
 from scipy.ndimage import find_objects
 
@@ -52,22 +52,28 @@ def cell_outlines(images_folder, files):
             print('failed', file)
     return output
 
-if len(sys.argv) != 5:
-  print('Usage: python run.py [path] [channel filter] [number of process] [process index]')
-  exit()
 
-images_folder   = sys.argv[1]
-channel_filter  = sys.argv[2]
-num_processes   = int(sys.argv[3])
-process_idx     = int(sys.argv[4])
+parser = argparse.ArgumentParser(description='run cellpose', prefix_chars='@')
+parser.add_argument('plate_path', type=str, help='folder containing images')
+parser.add_argument('dna_channel_substring', type=str, help='substring of filename to identify DNA channel')
+parser.add_argument('num_processes', type=int, help='number of processes')
+parser.add_argument('process_idx', type=int, help='process index')
+args = parser.parse_args()
+
+
+plate_path      = args.plate_path
+channel_filter  = args.dna_channel_substring
+num_processes   = args.num_processes
+process_idx     = args.process_idx
 output_file     = f'cellpose_{process_idx}_{num_processes}.csv'
+add_header      = num_processes > 0
 
-files = glob.glob(f'{images_folder}*{channel_filter}*')
-files = [f.removeprefix(images_folder) for f in files]
+files = glob.glob(f'{plate_path}*{channel_filter}*')
+files = [f.removeprefix(plate_path) for f in files]
 files = sorted(files)[process_idx::num_processes]
 
-output = cell_outlines(images_folder, files)
+output = cell_outlines(plate_path, files)
 
 df = pd.DataFrame(output)
 df = df.groupby('file').agg(list).reset_index()
-df[['file', 'x', 'y']].to_csv(output_file, sep='\t', header=False, index=False)
+df[['file', 'x', 'y']].to_csv(output_file, sep='\t', header=add_header, index=False)
