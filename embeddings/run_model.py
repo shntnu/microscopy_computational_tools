@@ -77,7 +77,7 @@ parser.add_argument('channel_names', type=str, help='comma seperated names of ch
 parser.add_argument('channel_substrings', type=str, help='comma seperated substrings of filename to identify channels')
 parser.add_argument('centers_path', type=str, help='filename with cell centers')
 parser.add_argument('num_workers', type=int, help='number of processes for loading data')
-parser.add_argument('output_file', type=str, help='output filename', nargs='?', default='dino4cells.tsv')
+parser.add_argument('output_file', type=str, help='output filename', nargs='?', default='embedding.tsv')
 parser.add_argument('inspection_file', type=str, help='output filename with image crops for manual inspection', nargs='?')
 args = parser.parse_args()
 
