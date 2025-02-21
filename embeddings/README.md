@@ -21,6 +21,9 @@ The script `run_model.py` takes the following arguments:
 * output file, filename ending in .csv, .tsv, or .h5
 * inspection file (optional, e.g., crops.png), if supplied, the script writes cropped cell images to this file for manual inspection
 
+
+The model path should point to [DINO_cell_painting_base_checkpoint.pth](https://zenodo.org/records/8061392) (dino4cells) or [Cell_Painting_CNN_v1.hdf5](https://zenodo.org/records/7114558 (CP-CNN).
+
 The script uses a Torch dataloader to launch background processes for reading images and creating cell crops.
 
 
