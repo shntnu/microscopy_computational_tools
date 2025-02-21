@@ -34,17 +34,18 @@ class Data_Set(Dataset):
                 self.cell_idx_to_image_idx.append(image_idx)
                 self.cell_idx_to_offset.append(offset)
     def __len__(self): 
-        num_cells = len(self.idx_to_image)
+        num_cells = len(self.cell_idx_to_image_idx)
         return num_cells
     def extract_subimage(self, images, center_i, center_j, subwindow=128):
-        output = np.zeros((len(self.images), subwindow, subwindow), dtype=np.float32)  # Batch, channels, width, height
+        output = np.zeros((len(self.images), subwindow, subwindow), dtype=np.float32)  # channels, width, height
         for ichan, im in enumerate(self.images):
             output[ichan, ...] = im[center_i:center_i + subwindow, center_j:center_j + subwindow]
         # rescale each subimage
-        output -= output.min(axis=(1, 2), keepdims=True)
-        out_max = output.max(axis=(1, 2), keepdims=True)
+        output -= np.nanmin(output, axis=(1, 2), keepdims=True)
+        out_max = np.nanmax(output, axis=(1, 2), keepdims=True)
         out_max[out_max == 0] = 1
         output /= out_max
+        output[ np.isnan(output) ] = 0 # padded values
         return output
     def __getitem__(self, idx):
         image_idx = self.cell_idx_to_image_idx[idx]
@@ -53,16 +54,17 @@ class Data_Set(Dataset):
             self.images = []
             for filename in self.image_groups[image_idx]:
                 try:
-                    self.images.append( np.asarray(Image.open(filename)) )
+                    im = np.asarray(Image.open(filename))
+                    self.images.append( im.astype(np.float32) )
                 except:
                     print(f'WARNING: Loading file failed for {filename}')
                     i_max = self.centers['i'].iloc[image_idx].max()
                     j_max = self.centers['j'].iloc[image_idx].max()
-                    self.images.append( np.zeros((i_max, j_max), dtype=np.uint16) )
+                    self.images.append( np.zeros((i_max, j_max), dtype=np.float32) )
             # pad images to simplify subimage extraction
             padwidth = self.subwindow // 2
             # this makes i, j the upper left corner of each subwindow, and prevents out-of-bounds
-            self.images = [np.pad(im, (padwidth, self.subwindow - padwidth)) for im in self.images]
+            self.images = [np.pad(im, (padwidth, self.subwindow - padwidth), constant_values=np.nan) for im in self.images]
         center_i = self.centers['i'].iloc[image_idx][ self.cell_idx_to_offset[idx] ]
         center_j = self.centers['j'].iloc[image_idx][ self.cell_idx_to_offset[idx] ]
         cell = self.extract_subimage(self.images, center_i, center_j, subwindow=128)
