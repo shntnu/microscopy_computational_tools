@@ -74,7 +74,6 @@ class embedding_writer:
         self.dataset = self.h5writer.add_dataset(model_name, num_rows, num_cols, dtype)
     
     def writerows(self, filename, centers_i, centers_j, embeddings):
-        print(embeddings.shape)
         if len(self.filenames) == 0 or self.filenames[-1] != filename:
             self.filenames.append(filename)
         file_idx = len(self.filenames) - 1
