@@ -10,18 +10,19 @@ import argparse
 from torch.utils.data import DataLoader
 from image_loader import Data_Set, Batch_Sampler
 
-def cell_embeddings(model, model_path, images_folder, centers, inspection_file, channel_names, channel_substrings, num_workers):
+def cell_embeddings(model_name, model_path, images_folder, centers, output_file, inspection_file, channel_names, channel_substrings, num_workers):
     output = []
-    if model == 'dino4cells':
+    if model_name == 'dino4cells':
         from dino4cells.simple_embed import dino_model
         model = dino_model(args.model_path)
+        num_output_features = 768
         input_channels = ['DNA', 'RNA', 'ER', 'AGP', 'Mito']
     else:
         from cpcnn.simple_embed import cpcnn_model
         model = cpcnn_model(args.model_path)
+        num_output_features = 10
         input_channels = ['DNA', 'RNA', 'ER', 'AGP', 'Mito']
 
-    # generate image names
     missing_channels = set(input_channels) - set(channel_names)
     if len(missing_channels) > 0:
         raise Exception('ERROR: Some channel names are missing. This model requires ' + ','.join(input_channels))
@@ -29,6 +30,7 @@ def cell_embeddings(model, model_path, images_folder, centers, inspection_file, 
         raise Exception('ERROR: The DNA channel should be specified')
     input_channels
 
+    # generate image names
     dna_images = [images_folder + imname for imname in centers.index]
     channel_filters = dict(zip(channel_names, channel_substrings))
     other_images = [[dnaim.replace(channel_filters['DNA'], channel_filters[channel]) for dnaim in dna_images]
@@ -38,6 +40,7 @@ def cell_embeddings(model, model_path, images_folder, centers, inspection_file, 
     # check that image paths point to actual files
     actual_files = set(glob.glob(images_folder + '*'))
     image_groups = [imgrp for imgrp in image_groups if all(filepath in actual_files for filepath in imgrp)]
+
     if len(image_groups) != len(centers):
         print(f"WARNING: Found complete image sets for {len(image_groups)} out of {len(centers)}")
 
@@ -45,8 +48,18 @@ def cell_embeddings(model, model_path, images_folder, centers, inspection_file, 
     bs = Batch_Sampler(image_groups, centers)
     dataloader = DataLoader(ds, batch_sampler=bs, num_workers=num_workers, pin_memory=True)
 
+    # set up hdf5, tsv, csv, and png output
+    if output_file.endswith('.h5') or output_file.endswith('.hdf5'):
+        from hdf5writer import embedding_writer
+        num_rows = len(ds)
+        writer = embedding_writer(output_file, model_name, num_rows, num_output_features, 'f4')
+    else:
+        from csvwriter import CSVWriter
+        writer = CSVWriter(output_file)
+        writer.write_header("file i j embedding".split())
+
     if inspection_file is not None:
-        num_sample_crops = 100
+        num_sample_crops = 25
         num_channels = len(input_channels)
         num_cells = len(ds)
         resolution = 128
@@ -61,12 +74,15 @@ def cell_embeddings(model, model_path, images_folder, centers, inspection_file, 
         if inspection_file is not None:
             subimage_inspector.add(dna_imname, centers_i, centers_j, subimages)
         embeddings = model(subimages)
-        for i, j, em in zip(centers_i, centers_j, embeddings):
-            output.append([dna_imname, i, j, em])
+        writer.writerows(dna_imname, centers_i, centers_j, embeddings)
+        
+        #if subimage_inspector.current_row > 0:
+        #    break
     
     if inspection_file is not None:
         subimage_inspector.save(inspection_file)
-    return output
+
+    writer.close()
 
 
 parser = argparse.ArgumentParser(description='run_dino4cells', prefix_chars='@')
@@ -94,7 +110,4 @@ channel_substrings = [s.strip() for s in args.channel_substrings.split(',')]
 
 centers = pd.read_table(args.centers_path, converters={'i':literal_eval, 'j':literal_eval}, index_col='file')
 
-output = cell_embeddings(args.model, args.model_path, images_folder, centers, args.inspection_file, channel_names, channel_substrings, args.num_workers)
-
-df = pd.DataFrame(output, columns="file i j embedding".split())
-df.to_csv(args.output_file, sep="\t", index=None)
+cell_embeddings(args.model, args.model_path, images_folder, centers, args.output_file, args.inspection_file, channel_names, channel_substrings, args.num_workers)
