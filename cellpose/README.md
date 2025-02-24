@@ -40,5 +40,5 @@ The output file can be read with Pandas via:
 ```
 import pandas as pd
 from ast import literal_eval
-df = pd.read_csv('file.tsv', sep='\t', converters={'x':literal_eval, 'y':literal_eval})
+df = pd.read_csv('file.tsv', sep='\t', converters={'i':literal_eval, 'j':literal_eval})
 ```
