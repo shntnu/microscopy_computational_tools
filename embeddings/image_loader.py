@@ -56,8 +56,8 @@ class Data_Set(Dataset):
                 try:
                     im = np.asarray(Image.open(filename))
                     self.images.append( im.astype(np.float32) )
-                except:
-                    print(f'WARNING: Loading file failed for {filename}')
+                except Exception as e:
+                    print(f'WARNING: Loading file failed for {filename}', e)
                     i_max = self.centers['i'].iloc[image_idx].max()
                     j_max = self.centers['j'].iloc[image_idx].max()
                     self.images.append( np.zeros((i_max, j_max), dtype=np.float32) )

@@ -48,8 +48,8 @@ def cell_outlines(images_folder, files):
                 output.append( {'file': file, 'i': round(scale_x * center[0]), 'j': round(scale_y * center[1])} )
         except KeyboardInterrupt:
             sys.exit(0)
-        except:
-            print('failed', file)
+        except Exception as e:
+            print('failed', file, e)
     return output
 
 
