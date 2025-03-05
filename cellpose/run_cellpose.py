@@ -66,7 +66,7 @@ channel_filter  = args.dna_channel_substring
 num_processes   = args.num_processes
 process_idx     = args.process_idx
 output_file     = f'cellpose_{process_idx}_{num_processes}.csv'
-add_header      = num_processes > 1
+add_header      = num_processes == 1
 
 files = glob.glob(f'{plate_path}*{channel_filter}*')
 files = [f.removeprefix(plate_path) for f in files]
