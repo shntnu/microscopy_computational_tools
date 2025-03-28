@@ -22,3 +22,18 @@ docker tag microscopy_computational_tools us-central1-docker.pkg.dev/PROJECT/REP
 gcloud auth configure-docker us-central1-docker.pkg.dev
 docker push us-central1-docker.pkg.dev/PROJECT/REPOSITORY/microscopy_computational_tools
 ```
+
+## Running locally on macOS
+
+For quick local testing on macOS, you can use the provided example script:
+
+```bash
+# Install dependencies
+uv sync
+
+# Run the example script
+./example_run.sh
+```
+
+Note that the package versions in `pyproject.toml` may not match what is in the `Dockerfile`. This is a quick way to test functionality locally on macOS.
+
