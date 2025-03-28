@@ -9,8 +9,12 @@ download_image() {
   local channel=$2
   local filename="r01c01f0${field}p01-ch${channel}sk1fk1fl1.tiff"
   
-  echo "Downloading $filename"
-  aws s3 cp "s3://cellpainting-gallery/cpg0000-jump-pilot/source_4/images/2020_11_04_CPJUMP1/images/BR00116991__2020-11-05T19_51_35-Measurement1/Images/$filename" "images/$filename"
+  if [ -f "images/$filename" ]; then
+    echo "File $filename already exists, skipping download"
+  else
+    echo "Downloading $filename"
+    aws s3 cp "s3://cellpainting-gallery/cpg0000-jump-pilot/source_4/images/2020_11_04_CPJUMP1/images/BR00116991__2020-11-05T19_51_35-Measurement1/Images/$filename" "images/$filename"
+  fi
 }
 
 # Download the model file
